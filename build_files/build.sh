@@ -16,8 +16,7 @@ cp -avf "/ctx/system_files"/. /
 # this installs a package from fedora repos
 dnf5 install -y \
     niri \
-    dankmaterialshell \
-    quickshell
+    dms
 
 
 # Use a COPR Example:
