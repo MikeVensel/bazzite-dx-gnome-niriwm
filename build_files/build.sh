@@ -6,10 +6,6 @@ set -ouex pipefail
 # Copy the contents of system_files/ of the git repo to /
 cp -avf "/ctx/system_files"/. /
 
-# Enable COPR repositories for Niri and DankMaterialShell
-dnf5 copr enable -y yurrriq/niri
-dnf5 copr enable -y danklinux/dms
-
 ### Install packages
 
 # Packages can be installed from any enabled yum repo on the image.
@@ -20,8 +16,7 @@ dnf5 copr enable -y danklinux/dms
 # this installs a package from fedora repos
 dnf5 install -y \
     niri \
-    dankmaterialshell \
-    quickshell
+    dms
 
 
 # Use a COPR Example:
@@ -30,10 +25,6 @@ dnf5 install -y \
 # dnf5 -y install package
 # Disable COPRs so they don't end up enabled on the final image:
 # dnf5 -y copr disable ublue-os/staging
-
-# Disable COPRs after installation to keep package management clean
-dnf5 copr disable -y yurrriq/niri
-dnf5 copr disable -y danklinux/dms
 
 #### Example for enabling a System Unit File
 
