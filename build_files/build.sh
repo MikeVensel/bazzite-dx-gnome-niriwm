@@ -26,9 +26,6 @@ dnf5 install -y \
 # Disable COPRs so they don't end up enabled on the final image:
 # dnf5 -y copr disable ublue-os/staging
 
-# Disable COPRs after installation to keep package management clean
-dnf5 copr disable -y danklinux/dms
-
 #### Example for enabling a System Unit File
 
 systemctl enable podman.socket
