@@ -6,9 +6,6 @@ set -ouex pipefail
 # Copy the contents of system_files/ of the git repo to /
 cp -avf "/ctx/system_files"/. /
 
-# Enable COPR repository for DankMaterialShell
-dnf5 copr enable -y danklinux/dms
-
 ### Install packages
 
 # Packages can be installed from any enabled yum repo on the image.
