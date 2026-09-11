@@ -8,7 +8,7 @@ export image_keywords := env_var("IMAGE_KEYWORDS")
 export image_logo_url := env_var("IMAGE_LOGO_URL")
 export default_tag := env_var("DEFAULT_TAG")
 export bib_image := env_var("BIB_IMAGE")
-export default_base_image := env("BASE_IMAGE", "ghcr.io/ublue-os/bazzite-dx-gnome:stable")
+export default_base_image := env_var_or_default("BASE_IMAGE", "ghcr.io/ublue-os/bazzite-dx-gnome:stable")
 
 alias build-vm := build-qcow2
 alias rebuild-vm := rebuild-qcow2
