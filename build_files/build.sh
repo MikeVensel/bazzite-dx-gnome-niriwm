@@ -6,8 +6,7 @@ set -ouex pipefail
 # Copy the contents of system_files/ of the git repo to /
 cp -avf "/ctx/system_files"/. /
 
-# Enable COPR repositories for Niri and DankMaterialShell
-dnf5 copr enable -y yurrriq/niri
+# Enable COPR repository for DankMaterialShell
 dnf5 copr enable -y danklinux/dms
 
 ### Install packages
@@ -32,7 +31,6 @@ dnf5 install -y \
 # dnf5 -y copr disable ublue-os/staging
 
 # Disable COPRs after installation to keep package management clean
-dnf5 copr disable -y yurrriq/niri
 dnf5 copr disable -y danklinux/dms
 
 #### Example for enabling a System Unit File
