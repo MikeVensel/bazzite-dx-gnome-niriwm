@@ -130,13 +130,93 @@ jobs:
           ALIAS_TAGS: ${{ steps.gen-build-tags.outputs.alias_tags }}
         run: |
           set -euox pipefail
+
+          inspect_local_digest() {
+            local image_ref="$1"
+            local digest=""
+
+            digest="$(podman image inspect "$image_ref" --format '{{.Digest}}' 2>/dev/null || true)"
+            if [ -n "${digest}" ]; then
+              printf '%s\n' "${digest}"
+              return 0
+            fi
+
+            if command -v skopeo >/dev/null 2>&1; then
+              digest="$(skopeo inspect --format '{{.Digest}}' "containers-storage:localhost/${image_ref}" 2>/dev/null || true)"
+              if [ -n "${digest}" ]; then
+                printf '%s\n' "${digest}"
+              fi
+            fi
+          }
+
+          inspect_remote_digest() {
+            local image_ref="$1"
+
+            if command -v skopeo >/dev/null 2>&1; then
+              skopeo inspect --format '{{.Digest}}' "docker://${image_ref}" 2>/dev/null || true
+            fi
+          }
+
+          retry_push() {
+            local source_ref="$1"
+            local destination_ref="$2"
+            local attempt=1
+            local max_attempts=5
+            local sleep_seconds=15
+
+            while true; do
+              if podman push --digestfile=/tmp/digestfile "$source_ref" "$destination_ref"; then
+                return 0
+              fi
+
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Push failed after ${max_attempts} attempts for ${destination_ref}" >&2
+                return 1
+              fi
+
+              echo "Push failed for ${destination_ref}; retrying in ${sleep_seconds}s (attempt ${attempt}/${max_attempts})"
+              sleep "${sleep_seconds}"
+              attempt=$((attempt + 1))
+              sleep_seconds=$((sleep_seconds * 2))
+            done
+          }
+
+          local_digest="$(inspect_local_digest "${IMAGE_NAME}:${DEFAULT_TAG}" || true)"
+          final_digest=""
+
+          if [ -n "${local_digest}" ]; then
+            echo "Resolved local image digest: ${local_digest}"
+          else
+            echo "Local image digest unavailable before push; tags will be pushed unless remote inspection later matches a pushed digest"
+          fi
+
           for tag in ${ALIAS_TAGS}; do
-            podman push --digestfile=/tmp/digestfile ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
+            remote_ref="${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}"
+            remote_digest="$(inspect_remote_digest "${remote_ref}" || true)"
+
+            if [ -n "${local_digest}" ] && [ -n "${remote_digest}" ] && [ "${local_digest}" = "${remote_digest}" ]; then
+              echo "Skipping ${remote_ref}; remote tag already points to ${remote_digest}"
+              final_digest="${final_digest:-${remote_digest}}"
+              continue
+            fi
+
+            retry_push "${IMAGE_NAME}:${tag}" "${remote_ref}"
+
+            pushed_digest=$(< /tmp/digestfile)
+            final_digest="${pushed_digest}"
+            local_digest="${local_digest:-${pushed_digest}}"
           done
 
-          digest=$(< /tmp/digestfile)
+          if [ -z "${final_digest}" ]; then
+            final_digest="${local_digest:-}"
+          fi
 
-          echo "digest=${digest}" >> $GITHUB_OUTPUT
+          if [ -z "${final_digest}" ]; then
+            echo "Unable to determine image digest after processing tags" >&2
+            exit 1
+          fi
+
+          echo "digest=${final_digest}" >> $GITHUB_OUTPUT
 
       # This section is optional and only needs to be enabled if you plan on distributing
       # your project for others to consume. You will need to create a public and private key
@@ -161,4 +241,3 @@ jobs:
           # https://github.com/coreos/rpm-ostree/issues/5509
           # use old bundle format, so we can use newer cosign 3.X.X instead of 2.X.X
           cosign sign -y --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}
-
